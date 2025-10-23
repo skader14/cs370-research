@@ -157,12 +157,20 @@ public class WorkloadParser {
 			
 			String vmName = lineitems.poll();
 			int toVmId = getVmId(vmName);
-			
-			long pktSize = Long.parseLong(lineitems.poll());
-			pktSize*=Configuration.NETWORK_PACKET_SIZE_MULTIPLY;
-			if(pktSize<0)
-				pktSize=0;
-			
+
+			// commented to add scientific notation compatibility
+//			long pktSize = Long.parseLong(lineitems.poll());
+//			pktSize*=Configuration.NETWORK_PACKET_SIZE_MULTIPLY;
+//			if(pktSize<0)
+//				pktSize=0;
+			String pktStr = lineitems.poll();
+			double pktSizeDouble = Double.parseDouble(pktStr);
+			long pktSize = (long) pktSizeDouble;
+			pktSize *= Configuration.NETWORK_PACKET_SIZE_MULTIPLY;
+			if (pktSize < 0)
+				pktSize = 0;
+
+
 			Request nextReq = parseRequest(toVmId, lineitems);
 			
 			Transmission trans = new Transmission(fromVmId, toVmId, pktSize, flowId, nextReq);
@@ -209,7 +217,18 @@ public class WorkloadParser {
 				tr.submitVmId = getVmId(vmName);
 				
 				tr.submitPktSize = Integer.parseInt(lineitems.poll());
-				
+				// --- Heuristic: classify critical vs normal flows ---
+				double packetSize = tr.submitPktSize;
+				boolean isCritical = packetSize >= 1.0E11; // flows >= 100 billion bits (~12.5 GB)
+				tr.setCritical(isCritical);
+
+				if (isCritical) {
+					System.out.println("[CRITICAL FLOW] " + vmName + " | PacketSize=" + packetSize);
+				} else {
+					System.out.println("[NORMAL FLOW]   " + vmName + " | PacketSize=" + packetSize);
+				}
+
+
 				tr.request = parseRequest(tr.submitVmId, lineitems);
 				
 				parsedWorkloads.add(tr);

@@ -25,7 +25,18 @@ public class Workload implements Comparable<Workload> {
 	public WorkloadResultWriter resultWriter;
 	
 	public boolean failed = false;
-	
+
+	public boolean isCritical = false;
+
+	public boolean isCritical() {
+		return isCritical;
+	}
+
+	public void setCritical(boolean isCritical) {
+		this.isCritical = isCritical;
+	}
+
+
 	public Workload(int workloadId, WorkloadResultWriter writer) {
 		this.workloadId = workloadId;
 		this.resultWriter = writer;

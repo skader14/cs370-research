@@ -1,0 +1,49 @@
+{
+  "nodes": [
+    { "name": "vm01", "type": "vm", "size": 1000, "pes": 1, "mips": 30000000, "ram": 512 },
+    { "name": "vm02", "type": "vm", "size": 1000, "pes": 1, "mips": 30000000, "ram": 512 },
+    { "name": "vm03", "type": "vm", "size": 1000, "pes": 1, "mips": 30000000, "ram": 512 },
+    { "name": "vm04", "type": "vm", "size": 1000, "pes": 1, "mips": 30000000, "ram": 512 },
+    { "name": "vm05", "type": "vm", "size": 1000, "pes": 1, "mips": 30000000, "ram": 512 },
+    { "name": "vm06", "type": "vm", "size": 1000, "pes": 1, "mips": 30000000, "ram": 512 },
+    { "name": "vm07", "type": "vm", "size": 1000, "pes": 1, "mips": 30000000, "ram": 512 },
+    { "name": "vm08", "type": "vm", "size": 1000, "pes": 1, "mips": 30000000, "ram": 512 }
+  ],
+  "links": [
+    { "name": "vm01-vm02", "source": "vm01", "destination": "vm02", "bandwidth": 10000000 },
+    { "name": "vm02-vm01", "source": "vm02", "destination": "vm01", "bandwidth": 10000000 },
+
+    { "name": "vm02-vm03", "source": "vm02", "destination": "vm03", "bandwidth": 10000000 },
+    { "name": "vm03-vm02", "source": "vm03", "destination": "vm02", "bandwidth": 10000000 },
+
+    { "name": "vm03-vm04", "source": "vm03", "destination": "vm04", "bandwidth": 10000000 },
+    { "name": "vm04-vm03", "source": "vm04", "destination": "vm03", "bandwidth": 10000000 },
+
+    { "name": "vm04-vm05", "source": "vm04", "destination": "vm05", "bandwidth": 10000000 },
+    { "name": "vm05-vm04", "source": "vm05", "destination": "vm04", "bandwidth": 10000000 },
+
+    { "name": "vm05-vm06", "source": "vm05", "destination": "vm06", "bandwidth": 10000000 },
+    { "name": "vm06-vm05", "source": "vm06", "destination": "vm05", "bandwidth": 10000000 },
+
+    { "name": "vm06-vm07", "source": "vm06", "destination": "vm07", "bandwidth": 10000000 },
+    { "name": "vm07-vm06", "source": "vm07", "destination": "vm06", "bandwidth": 10000000 },
+
+    { "name": "vm07-vm08", "source": "vm07", "destination": "vm08", "bandwidth": 10000000 },
+    { "name": "vm08-vm07", "source": "vm08", "destination": "vm07", "bandwidth": 10000000 },
+
+    { "name": "vm08-vm01", "source": "vm08", "destination": "vm01", "bandwidth": 10000000 },
+    { "name": "vm01-vm08", "source": "vm01", "destination": "vm08", "bandwidth": 10000000 },
+
+    { "name": "vm01-vm05", "source": "vm01", "destination": "vm05", "bandwidth": 20000000 },
+    { "name": "vm05-vm01", "source": "vm05", "destination": "vm01", "bandwidth": 20000000 },
+
+    { "name": "vm02-vm06", "source": "vm02", "destination": "vm06", "bandwidth": 20000000 },
+    { "name": "vm06-vm02", "source": "vm06", "destination": "vm02", "bandwidth": 20000000 },
+
+    { "name": "vm03-vm07", "source": "vm03", "destination": "vm07", "bandwidth": 20000000 },
+    { "name": "vm07-vm03", "source": "vm07", "destination": "vm03", "bandwidth": 20000000 },
+
+    { "name": "vm04-vm08", "source": "vm04", "destination": "vm08", "bandwidth": 20000000 },
+    { "name": "vm08-vm04", "source": "vm08", "destination": "vm04", "bandwidth": 20000000 }
+  ]
+}
