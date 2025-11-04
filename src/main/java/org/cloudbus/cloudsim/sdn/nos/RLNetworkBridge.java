@@ -55,4 +55,12 @@ public class RLNetworkBridge {
     public double getTime() {
         return CloudSim.clock();
     }
+
+    /**
+     * Return whether the CloudSim simulation engine is currently running.
+     * Exposed to Python via Py4J.
+     */
+    public boolean isRunning() {
+        return CloudSim.running();
+    }
 }
