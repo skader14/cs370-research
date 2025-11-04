@@ -1,0 +1,13 @@
+{
+  "vms": [
+    {"name": "vm0", "host": "host0", "pes": 1, "mips": 1000, "ram": 512, "size": 10000, "bw": 1000},
+    {"name": "vm1", "host": "host1", "pes": 1, "mips": 1000, "ram": 512, "size": 10000, "bw": 1000},
+    {"name": "vm2", "host": "host2", "pes": 1, "mips": 1000, "ram": 512, "size": 10000, "bw": 1000},
+    {"name": "vm3", "host": "host3", "pes": 1, "mips": 1000, "ram": 512, "size": 10000, "bw": 1000}
+  ],
+  "flows": [
+    {"name": "f0", "src": "vm0", "dst": "vm1", "bandwidth": 50000},
+    {"name": "f1", "src": "vm1", "dst": "vm2", "bandwidth": 50000},
+    {"name": "f2", "src": "vm2", "dst": "vm3", "bandwidth": 50000}
+  ]
+}

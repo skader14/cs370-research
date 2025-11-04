@@ -51,6 +51,7 @@ import org.cloudbus.cloudsim.sdn.virtualcomponents.Channel;
 import org.cloudbus.cloudsim.sdn.virtualcomponents.SDNVm;
 import org.cloudbus.cloudsim.sdn.virtualcomponents.VirtualNetworkMapper;
 import org.cloudbus.cloudsim.sdn.workload.Transmission;
+import org.cloudbus.cloudsim.sdn.monitor.MonitoringValues;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
@@ -89,6 +90,9 @@ public abstract class NetworkOperatingSystem extends SimEntity {
 	
 	protected ServiceFunctionForwarder sfcForwarder;
 	protected ServiceFunctionAutoScaler sfcScaler;
+
+	// Per-flow observed latency monitoring (seconds)
+	protected Map<Integer, MonitoringValues> flowLatencyMap = new HashMap<Integer, MonitoringValues>();
 
 	// Resolution of the result.
 	public static final long bandwidthWithinSameHost = 1500000000; // bandwidth between VMs within a same host: 12Gbps = 1.5GBytes/sec
@@ -347,12 +351,46 @@ public abstract class NetworkOperatingSystem extends SimEntity {
 				Datacenter dc = SDNDatacenter.findDatacenterGlobal(vmId);
 				
 				//Log.printLine(CloudSim.clock() + ": " + getName() + ": Packet completed: "+pkt +". Send to destination:"+ch.getLastNode());
-				sendPacketCompleteEvent(dc, pkt, ch.getTotalLatency());
+				// Use observed packet latency (finish - start) which includes queuing and serialization delays
+				double observedLatency = pkt.getFinishTime() - pkt.getStartTime();
+				if(observedLatency <= 0) {
+					// fall back to channel propagation latency
+					observedLatency = ch.getTotalLatency();
+				}
+
+				// Record per-flow observed latency for monitoring
+				int flowId = pkt.getFlowId();
+				MonitoringValues mv = flowLatencyMap.get(flowId);
+				if(mv == null) {
+					mv = new MonitoringValues(MonitoringValues.ValueType.Time_Second);
+					flowLatencyMap.put(flowId, mv);
+				}
+				mv.add(observedLatency, CloudSim.clock());
+
+				// Attribute extra queuing delay across links proportionally (simple equal split)
+				double propagationLatency = ch.getTotalLatency();
+				double extraDelay = observedLatency - propagationLatency;
+				List<Link> chLinks = ch.getLinks();
+				List<Node> chNodes = ch.getNodes();
+				if(chLinks != null && chNodes != null && !chLinks.isEmpty()) {
+					double perLinkExtra = extraDelay > 0 ? extraDelay / chLinks.size() : 0.0;
+					// For each link along the channel, add observed delay (propagation + perLinkExtra) to link's monitoring
+					for(int i=0; i<chLinks.size(); i++) {
+						Link link = chLinks.get(i);
+						Node from = chNodes.get(i);
+						double linkObserved = link.getLatencyInSeconds() + perLinkExtra;
+						link.addObservedDelay(from, linkObserved, CloudSim.clock());
+					}
+				}
+
+				sendPacketCompleteEvent(dc, pkt, observedLatency);
 			}
 			
 			for (Transmission tr:ch.getFailedPackets()){
 				Packet pkt = tr.getPacket();
-				sendPacketFailedEvent(this.datacenter, pkt, ch.getTotalLatency());
+				double observedLatency = pkt.getFinishTime() - pkt.getStartTime();
+				if(observedLatency <= 0) observedLatency = ch.getTotalLatency();
+				sendPacketFailedEvent(this.datacenter, pkt, observedLatency);
 			}
 		}
 	}
@@ -691,6 +729,26 @@ public abstract class NetworkOperatingSystem extends SimEntity {
 			}
 		}
 	}
+
+	/**
+	 * Expose flow latency monitoring values (for RL bridge)
+	 */
+	public List<org.cloudbus.cloudsim.sdn.monitor.MonitoringValues> getMonitoringValuesFlows() {
+		return new ArrayList<org.cloudbus.cloudsim.sdn.monitor.MonitoringValues>(flowLatencyMap.values());
+	}
+
+	/**
+	 * Expose link delay monitoring values (both up and down) for RL bridge
+	 */
+	public List<org.cloudbus.cloudsim.sdn.monitor.MonitoringValues> getMonitoringValuesLinks() {
+		List<org.cloudbus.cloudsim.sdn.monitor.MonitoringValues> res = new ArrayList<>();
+		Collection<org.cloudbus.cloudsim.sdn.physicalcomponents.Link> links = this.topology.getAllLinks();
+		for(org.cloudbus.cloudsim.sdn.physicalcomponents.Link l: links) {
+			res.add(l.getMonitoringValuesLinkDelayUp());
+			res.add(l.getMonitoringValuesLinkDelayDown());
+		}
+		return res;
+	}
 		
 	public Vm getSFForwarderOriginalVm(int vmId) {
 		return this.sfcForwarder.getOriginalSF(vmId);
@@ -709,6 +767,96 @@ public abstract class NetworkOperatingSystem extends SimEntity {
 		}
 
 		return latency;
+	}
+
+	/**
+	 * Return list of known flow IDs
+	 */
+	public List<Integer> getFlowIds() {
+		return new ArrayList<Integer>(gFlowMapFlowId2Flow.keySet());
+	}
+
+	/**
+	 * Return average observed latency for a flow over the given window (seconds).
+	 * If no data is available, returns -1.
+	 */
+	public double getFlowAvgLatency(int flowId, double windowSeconds) {
+		MonitoringValues mv = flowLatencyMap.get(flowId);
+		if(mv == null) return -1.0;
+		double end = CloudSim.clock();
+		double start = end - windowSeconds;
+		if(start < 0) start = 0;
+		return mv.getAverageValue(start, end);
+	}
+
+	/**
+	 * Return a list of link identifiers (string label) for all links in the topology.
+	 * Label format: "<lowOrder>-<highOrder>" to be stable across bridge calls.
+	 */
+	public List<String> getAllLinkIds() {
+		List<String> ids = new ArrayList<>();
+		Collection<Link> links = this.topology.getAllLinks();
+		for(Link l: links) {
+			String id = l.getLowOrder().toString() + "-" + l.getHighOrder().toString();
+			ids.add(id);
+		}
+		return ids;
+	}
+
+	/**
+	 * Return average utilization of the link (max of up/down) over a given window (seconds).
+	 * Identifies link by index in the list returned by getAllLinkIds(). Returns -1 on error.
+	 */
+	public double getLinkAvgUtilization(int linkIndex, double windowSeconds) {
+		List<Link> links = new ArrayList<Link>(this.topology.getAllLinks());
+		if(linkIndex < 0 || linkIndex >= links.size()) return -1.0;
+		Link l = links.get(linkIndex);
+		double end = CloudSim.clock();
+		double start = end - windowSeconds;
+		if(start < 0) start = 0;
+		double up = l.getMonitoringValuesLinkUtilizationUp().getAverageValue(start, end);
+		double down = l.getMonitoringValuesLinkUtilizationDown().getAverageValue(start, end);
+		return Math.max(up, down);
+	}
+
+	/**
+	 * Return node address path for a given flowId (as int array). If not found, returns null.
+	 */
+	public int[] getFlowPath(int flowId) {
+		FlowConfig flow = gFlowMapFlowId2Flow.get(flowId);
+		if(flow == null) return null;
+		List<Node> nodes = new ArrayList<Node>();
+		List<Link> links = new ArrayList<Link>();
+		Node srcHost = findHost(flow.getSrcId());
+		vnMapper.buildNodesLinks(flow.getSrcId(), flow.getDstId(), flowId, (SDNHost)srcHost, nodes, links);
+		if(nodes == null || nodes.isEmpty()) return null;
+		int[] path = new int[nodes.size()];
+		for(int i=0;i<nodes.size();i++) path[i] = nodes.get(i).getAddress();
+		return path;
+	}
+
+	/**
+	 * Ask NOS to perform a reroute for the given flowId using vnMapper policies.
+	 * Returns true if reroute was triggered.
+	 */
+	public boolean rerouteFlow(int flowId) {
+		FlowConfig flow = gFlowMapFlowId2Flow.get(flowId);
+		if(flow == null) return false;
+		SDNHost sender = findHost(flow.getSrcId());
+		boolean ok = vnMapper.updateDynamicForwardingTableRec(sender, flow.getSrcId(), flow.getDstId(), flowId, true);
+		if(ok) {
+			sendAdjustAllChannelEvent();
+		}
+		return ok;
+	}
+
+	/**
+	 * Return endpoints for a flow: [srcId, dstId]
+	 */
+	public int[] getFlowEndpoints(int flowId) {
+		FlowConfig flow = gFlowMapFlowId2Flow.get(flowId);
+		if(flow == null) return null;
+		return new int[] { flow.getSrcId(), flow.getDstId() };
 	}
 
 	/*

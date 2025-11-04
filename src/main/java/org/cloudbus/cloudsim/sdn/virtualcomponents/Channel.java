@@ -65,6 +65,20 @@ public class Channel {
 //		this.dstVm = dstVm;
 		packetScheduler.setTimeOut(Configuration.TIME_OUT); // If the packet is not successfull in 3 seconds, it will be discarded.
 	}
+
+	/**
+	 * Expose links for external monitoring/processing (read-only)
+	 */
+	public List<Link> getLinks() {
+		return this.links;
+	}
+
+	/**
+	 * Expose nodes along the channel route (read-only)
+	 */
+	public List<Node> getNodes() {
+		return this.nodes;
+	}
 	
 	public void initialize() {
 		// Assign BW to all links

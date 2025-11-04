@@ -258,6 +258,9 @@ public class Link {
 	// For monitor
 	private MonitoringValues mvUp = new MonitoringValues(MonitoringValues.ValueType.Utilization_Percentage);
 	private MonitoringValues mvDown = new MonitoringValues(MonitoringValues.ValueType.Utilization_Percentage);
+	// Observed per-packet/link latency (seconds)
+	private MonitoringValues mvDelayUp = new MonitoringValues(MonitoringValues.ValueType.Time_Second);
+	private MonitoringValues mvDelayDown = new MonitoringValues(MonitoringValues.ValueType.Time_Second);
 	private long monitoringProcessedBytesPerUnitUp = 0;
 	private long monitoringProcessedBytesPerUnitDown = 0;
 	
@@ -284,6 +287,22 @@ public class Link {
 	}
 	public MonitoringValues getMonitoringValuesLinkUtilizationUp() { 
 		return mvUp;
+	}
+
+	public MonitoringValues getMonitoringValuesLinkDelayDown() {
+		return mvDelayDown;
+	}
+
+	public MonitoringValues getMonitoringValuesLinkDelayUp() {
+		return mvDelayUp;
+	}
+
+	public void addObservedDelay(Node from, double delaySeconds, double timestamp) {
+		if(isUplink(from)) {
+			mvDelayUp.add(delaySeconds, timestamp);
+		} else {
+			mvDelayDown.add(delaySeconds, timestamp);
+		}
 	}
 
 	public void increaseProcessedBytes(Node from, long processedBytes) {

@@ -37,7 +37,8 @@ public class CloudSimTagsSDN {
 	public static final int APPLICATION_SUBMIT_ACK = SDN_BASE + 21;
 
 	public static final int MONITOR_UPDATE_UTILIZATION = SDN_BASE + 25;
-//	public static final int CHECK_MIGRATION = SDN_BASE + 26;
+	public static final int RL_FLOW_TABLE_UPDATE = SDN_BASE + 26;
+//	public static final int CHECK_MIGRATION = SDN_BASE + 27;
 
 	private CloudSimTagsSDN() {
 		throw new UnsupportedOperationException("CloudSimTags cannot be instantiated");
